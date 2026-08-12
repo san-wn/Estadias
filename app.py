@@ -390,7 +390,7 @@ col3.metric("Verificacion de seguridad", consenso)
 if consenso == ":D Aprobado":
 
     st.success(
-        f"**VEREDICTO SEGURO:** El sistema aprobó la prediccion, por lo que es probable que tenga razon. El agua presenta tendencia {clase_texto.upper()}**."
+        f"**VEREDICTO SEGURO:** El sistema aprobó la prediccion, por lo que es probable que tenga razon. El agua presenta tendencia **{clase_texto.upper()}**."
     )
 
 else:
