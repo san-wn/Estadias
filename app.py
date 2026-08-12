@@ -15,10 +15,7 @@ st.set_page_config(
 
 st.title(":D Sistema Predictivo de Incrustaciones (LSI)")
 
-st.write(
-    "Interfaz de diagnóstico y monitoreo histórico utilizando "
-    "telemetria y algoritmos de aprendizaje automatico. V.1.2"
-)
+st.write("Interfaz de diagnóstico y monitoreo histórico utilizando telemetria y algoritmos de aprendizaje automatico. V.1.2")
 
 # ====================================================================
 # 1. CARGA DE MODELOS
@@ -39,9 +36,7 @@ try:
 
 except Exception as e:
 
-    st.error(
-        ":O Error: No se encontraron los modelos .pkl "
-        "en el repositorio."
+    st.error(":O Error: No se encontraron los modelos .pkl "
     )
 
     st.exception(e)
@@ -51,11 +46,7 @@ except Exception as e:
 # 2. CONEXIÓN Y LIMPIEZA DE DATOS
 # ====================================================================
 
-URL_GOOGLE_SHEETS = (
-    "https://docs.google.com/spreadsheets/d/e/"
-    "2PACX-1vQN1fUNX4RW58QQBpT7yUivdAxivFiYpPsf9m7XNLE9ubdjSwcq6wYSuB62xSg6YwLl0r8ChcSzDjo8/"
-    "pub?output=csv"
-)
+URL_GOOGLE_SHEETS = ("https://docs.google.com/spreadsheets/d/e/2PACX-1vQN1fUNX4RW58QQBpT7yUivdAxivFiYpPsf9m7XNLE9ubdjSwcq6wYSuB62xSg6YwLl0r8ChcSzDjo8/pub?output=csv")
 
 def convertir_numero(serie):
 
@@ -104,9 +95,7 @@ def obtener_datos_limpios():
 
     if len(df.columns) < 4:
 
-        raise ValueError(
-            "Google Sheets no contiene al menos 4 columnas."
-        )
+        raise ValueError("Google Sheets no tiene minimo 4 columnas.")
 
     # Tomamos exclusivamente las primeras 4 columnas
     df = df.iloc[:, :4].copy()
@@ -124,17 +113,11 @@ def obtener_datos_limpios():
     # LIMPIEZA DE LAS COLUMNAS NUMÉRICAS
     # ---------------------------------------------------------------
 
-    df["Temperatura"] = convertir_numero(
-        df["Temperatura"]
-    )
+    df["Temperatura"] = convertir_numero(df["Temperatura"])
 
-    df["pH"] = convertir_numero(
-        df["pH"]
-    )
+    df["pH"] = convertir_numero(df["pH"])
 
-    df["Conductividad"] = convertir_numero(
-        df["Conductividad"]
-    )
+    df["Conductividad"] = convertir_numero(df["Conductividad"])
 
     # ---------------------------------------------------------------
     # LIMPIEZA DE FECHA
@@ -163,13 +146,9 @@ def obtener_datos_limpios():
     # ORDEN CRONOLÓGICO
     # ---------------------------------------------------------------
 
-    df = df.sort_values(
-        by="tiempo"
-    )
+    df = df.sort_values(by="tiempo")
 
-    df = df.reset_index(
-        drop=True
-    )
+    df = df.reset_index(drop=True)
 
     return df
 
@@ -179,8 +158,7 @@ def obtener_datos_limpios():
 
 st.sidebar.header("Origen de Datos")
 
-modo_conexion = st.sidebar.radio(
-    "Selecciona el modo:",
+modo_conexion = st.sidebar.radio("Selecciona el modo:",
     [
         "Telemetria (Google Sheets)",
         "Simulacion Manual"
@@ -205,56 +183,31 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
         fecha_lectura = ultima_lectura["tiempo"]
 
-        temp = float(
-            ultima_lectura["Temperatura"]
-        )
+        temp = float(ultima_lectura["Temperatura"])
 
-        ph = float(
-            ultima_lectura["pH"]
-        )
+        ph = float(ultima_lectura["pH"])
 
-        cond = float(
-            ultima_lectura["Conductividad"]
-        )
+        cond = float(ultima_lectura["Conductividad"])
 
         # -----------------------------------------------------------
         # INFORMACIÓN EN SIDEBAR
         # -----------------------------------------------------------
 
-        st.sidebar.success(
-            ":D Conectado a la base de datos "
-            "hecha y administrada por Santiago"
-        )
+        st.sidebar.success(":D Conectado a la base de datos hecha y administrada por Santiago")
 
-        st.sidebar.markdown(
-            f"**Última lectura:** {fecha_lectura}"
-        )
+        st.sidebar.markdown(f"**Última lectura:** {fecha_lectura}")
 
-        st.sidebar.metric(
-            "pH",
-            f"{ph:.2f}"
-        )
+        st.sidebar.metric("pH", f"{ph:.2f}")
 
-        st.sidebar.metric(
-            "Conductividad",
-            f"{cond:.2f} µS/cm"
-        )
+        st.sidebar.metric("Conductividad", f"{cond:.2f} µS/cm")
 
-        st.sidebar.metric(
-            "Temperatura",
-            f"{temp:.2f} °C"
-        )
+        st.sidebar.metric( "Temperatura", f"{temp:.2f} °C")
 
     except Exception as e:
 
-        st.sidebar.error(
-            ":O Error al procesar los datos."
-        )
+        st.sidebar.error( ":O Error al procesar los datos.")
 
-        st.error(
-            "El formato de las columnas A, B, C y D "
-            "no es compatible con el sistema."
-        )
+        st.error("El formato de las columnas A, B, C y D no es compatible con el sistema.")
 
         st.exception(e)
 
@@ -266,9 +219,7 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
 else:
 
-    st.sidebar.subheader(
-        "Lecturas Manuales"
-    )
+    st.sidebar.subheader( "Lecturas Manuales")
 
     ph = st.sidebar.number_input(
         "pH del Agua",
@@ -312,29 +263,17 @@ temp = float(temp)
 
 tds = cond * 0.5
 
-log_cond = np.log10(
-    cond + 1
-)
+log_cond = np.log10( cond + 1)
 
-log_temp_k = np.log10(
-    temp + 273.15
-)
+log_temp_k = np.log10( temp + 273.15)
 
-ph_x_logcond = (
-    ph * log_cond
-)
+ph_x_logcond = (ph * log_cond)
 
-ph_cuadrado = (
-    ph ** 2
-)
+ph_cuadrado = (ph ** 2)
 
-cond_cuadrado = (
-    cond ** 2
-)
+cond_cuadrado = (cond ** 2)
 
-rel_termo = (
-    ph / (temp + 273.15)
-)
+rel_termo = (ph / (temp + 273.15))
 
 # ====================================================================
 # 8. DATAFRAME DE ENTRADA PARA LOS MODELOS
@@ -342,45 +281,16 @@ rel_termo = (
 
 datos_entrada = pd.DataFrame({
 
-    "pH": [
-        ph
-    ],
-
-    "Conductividad": [
-        cond
-    ],
-
-    "Temperatura": [
-        temp
-    ],
-
-    "TDS_Estimado": [
-        tds
-    ],
-
-    "Log_Cond": [
-        log_cond
-    ],
-
-    "Log_Temp_Kelvin": [
-        log_temp_k
-    ],
-
-    "pH_x_LogCond": [
-        ph_x_logcond
-    ],
-
-    "pH_Cuadrado": [
-        ph_cuadrado
-    ],
-
-    "Cond_Cuadrado": [
-        cond_cuadrado
-    ],
-
-    "Relacion_Termodinamica": [
-        rel_termo
-    ]
+    "pH": [ph],
+    "Conductividad": [cond],
+    "Temperatura": [temp],
+    "TDS_Estimado": [tds],
+    "Log_Cond": [log_cond],
+    "Log_Temp_Kelvin": [log_temp_k],
+    "pH_x_LogCond": [ph_x_logcond],
+    "pH_Cuadrado": [ph_cuadrado],
+    "Cond_Cuadrado": [cond_cuadrado],
+    "Relacion_Termodinamica": [rel_termo]
 })
 
 # ====================================================================
@@ -389,9 +299,7 @@ datos_entrada = pd.DataFrame({
 
 try:
 
-    columnas_esperadas = (
-        ia_clasificadora.feature_names_in_
-    )
+    columnas_esperadas = (ia_clasificadora.feature_names_in_)
 
 except AttributeError:
 
@@ -407,17 +315,11 @@ faltantes = [
 
 if faltantes:
 
-    st.error(
-        ":O El modelo requiere columnas que "
-        "no fueron generadas: "
-        f"{faltantes}"
-    )
+    st.error(":O El modelo requiere columnas que no existen: " f"{faltantes}")
 
     st.stop()
 
-datos_entrada = datos_entrada[
-    columnas_esperadas
-]
+datos_entrada = datos_entrada[ columnas_esperadas]
 
 # ====================================================================
 # 10. PREDICCIONES
@@ -429,33 +331,19 @@ try:
     # MODELO REGRESOR
     # ---------------------------------------------------------------
 
-    lsi_num = (
-        ia_regresora
-        .predict(datos_entrada)[0]
-    )
+    lsi_num = (ia_regresora.predict(datos_entrada)[0])
 
     # ---------------------------------------------------------------
     # MODELO CLASIFICADOR
     # ---------------------------------------------------------------
 
-    clase_num = (
-        ia_clasificadora
-        .predict(datos_entrada)
-    )
-
-    clase_texto = (
-        traductor
-        .inverse_transform(clase_num)[0]
-    )
+    clase_num = ( ia_clasificadora.predict(datos_entrada))
+    clase_texto = (traductor.inverse_transform(clase_num)[0])
 
 except Exception as e:
 
-    st.error(
-        ":O Error al ejecutar los modelos de IA."
-    )
-
+    st.error( ":O Error al ejecutar los modelos de IA.")
     st.exception(e)
-
     st.stop()
 
 # ====================================================================
@@ -463,15 +351,12 @@ except Exception as e:
 # ====================================================================
 
 if lsi_num < -0.5:
-
     clase_reg = "Corrosiva"
 
 elif lsi_num > 0.5:
-
     clase_reg = "Incrustante"
 
 else:
-
     clase_reg = "Equilibrada"
 
 # ====================================================================
@@ -479,39 +364,24 @@ else:
 # ====================================================================
 
 if clase_texto == clase_reg:
-
     consenso = ":D Aprobado"
 
 else:
-
-    consenso = (
-        ":O Alerta, se requiere de revision manual"
-    )
+    consenso = (":O Alerta, se requiere de revision manual")
 
 # ====================================================================
 # 13. DASHBOARD DE RESULTADOS
 # ====================================================================
 
-st.subheader(
-    "Diagnóstico Quimico en Tiempo Real"
-)
+st.subheader("Diagnóstico Quimico en Tiempo Real")
 
 col1, col2, col3 = st.columns(3)
 
-col1.metric(
-    "LSI Matematico (IA 1)",
-    f"{lsi_num:.2f}"
-)
+col1.metric("LSI Matematico (ALgoritmo 1)", f"{lsi_num:.2f}")
 
-col2.metric(
-    "Estado Estimado (IA 2)",
-    clase_texto
-)
+col2.metric( "Estado Estimado (Algoritmo 2)", clase_texto)
 
-col3.metric(
-    "Verificacion de seguridad",
-    consenso
-)
+col3.metric("Verificacion de seguridad", consenso)
 
 # ====================================================================
 # 14. VEREDICTO
@@ -520,22 +390,12 @@ col3.metric(
 if consenso == ":D Aprobado":
 
     st.success(
-        f"**VEREDICTO SEGURO:** "
-        f"El sistema de redundancia aprobó la prediccion, "
-        f"por lo que es probable que tenga razon. "
-        f"El agua presenta tendencia "
-        f"**{clase_texto.upper()}**."
+        f"**VEREDICTO SEGURO:** El sistema aprobó la prediccion, por lo que es probable que tenga razon. El agua presenta tendencia {clase_texto.upper()}**."
     )
 
 else:
 
-    st.warning(
-        f"**ALERTA DEL SISTEMA:** "
-        f"Discrepancia matematica. "
-        f"Regresión estima '{clase_reg}' "
-        f"mientras que Clasificadora etiqueta "
-        f"'{clase_texto}'."
-    )
+    st.warning( f"**ALERTA DEL SISTEMA:** Discrepancia matematica. Regresión estima '{clase_reg}' mientras que Clasificadora etiqueta {clase_texto}'.")
 
 # ====================================================================
 # 16. DASHBOARD HISTÓRICO
@@ -545,45 +405,31 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
     st.markdown("---")
 
-    st.subheader(
-        "Análisis historico - últimos 7 días de actividad"
-    )
+    st.subheader("Análisis historico - últimos 7 días de actividad")
 
     # ---------------------------------------------------------------
     # CREAR FECHA PURA
     # ---------------------------------------------------------------
 
-    df_telemetria["Fecha_Pura"] = (
-        df_telemetria["tiempo"].dt.date
-    )
+    df_telemetria["Fecha_Pura"] = ( df_telemetria["tiempo"].dt.date)
 
     # ---------------------------------------------------------------
     # OBTENER LOS DÍAS REGISTRADOS
     # ---------------------------------------------------------------
 
-    dias_unicos_registrados = sorted(
-        df_telemetria["Fecha_Pura"]
-        .dropna()
-        .unique()
-    )
+    dias_unicos_registrados = sorted( df_telemetria["Fecha_Pura"].dropna().unique())
 
     # ---------------------------------------------------------------
     # ÚLTIMOS 7 DÍAS DISPONIBLES
     # ---------------------------------------------------------------
 
-    ultimos_7_dias = (
-        dias_unicos_registrados[-7:]
-    )
+    ultimos_7_dias = (dias_unicos_registrados[-7:])
 
     # ---------------------------------------------------------------
     # FILTRAR
     # ---------------------------------------------------------------
 
-    df_plot = df_telemetria[
-        df_telemetria["Fecha_Pura"].isin(
-            ultimos_7_dias
-        )
-    ].copy()
+    df_plot = df_telemetria[df_telemetria["Fecha_Pura"].isin(ultimos_7_dias)].copy()
 
     # =================================================================
     # 17. CREAR CARACTERÍSTICAS HISTÓRICAS
@@ -606,41 +452,19 @@ if modo_conexion == "Telemetria (Google Sheets)":
     # VARIABLES ESTIMADAS
     # ---------------------------------------------------------------
 
-    df_plot_features["TDS_Estimado"] = (
-        df_plot_features["Conductividad"]
-        * 0.5
-    )
+    df_plot_features["TDS_Estimado"] = (df_plot_features["Conductividad"]* 0.5)
 
-    df_plot_features["Log_Cond"] = np.log10(
-        df_plot_features["Conductividad"] + 1
-    )
+    df_plot_features["Log_Cond"] = np.log10(df_plot_features["Conductividad"] + 1)
 
-    df_plot_features["Log_Temp_Kelvin"] = np.log10(
-        df_plot_features["Temperatura"] + 273.15
-    )
+    df_plot_features["Log_Temp_Kelvin"] = np.log10(df_plot_features["Temperatura"] + 273.15)
 
-    df_plot_features["pH_x_LogCond"] = (
-        df_plot_features["pH"]
-        *
-        df_plot_features["Log_Cond"]
-    )
+    df_plot_features["pH_x_LogCond"] = (df_plot_features["pH"] * df_plot_features["Log_Cond"])
 
-    df_plot_features["pH_Cuadrado"] = (
-        df_plot_features["pH"] ** 2
-    )
+    df_plot_features["pH_Cuadrado"] = (df_plot_features["pH"] ** 2)
 
-    df_plot_features["Cond_Cuadrado"] = (
-        df_plot_features["Conductividad"] ** 2
-    )
+    df_plot_features["Cond_Cuadrado"] = (df_plot_features["Conductividad"] ** 2)
 
-    df_plot_features["Relacion_Termodinamica"] = (
-        df_plot_features["pH"]
-        /
-        (
-            df_plot_features["Temperatura"]
-            + 273.15
-        )
-    )
+    df_plot_features["Relacion_Termodinamica"] = (df_plot_features["pH"] / (df_plot_features["Temperatura"] + 273.15))
 
     # ---------------------------------------------------------------
     # ORDEN DE COLUMNAS DEL MODELO
@@ -658,29 +482,19 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
     try:
 
-        df_plot["Curva LSI Predicha"] = (
-            ia_regresora.predict(
-                df_plot_features
-            )
-        )
+        df_plot["Curva LSI Predicha"] = (ia_regresora.predict( df_plot_features))
 
     except Exception as e:
 
-        st.error(
-            ":O Error al generar la predicción histórica."
-        )
-
+        st.error(":O Error al generar la predicción histórica.")
         st.exception(e)
-
         st.stop()
 
     # =================================================================
     # 19. USAR TIEMPO COMO ÍNDICE
     # =================================================================
 
-    df_plot = df_plot.set_index(
-        "tiempo"
-    )
+    df_plot = df_plot.set_index( "tiempo")
 
     # =================================================================
     # 20. PESTAÑAS
@@ -700,17 +514,9 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
     with tab1:
 
-        st.write(
-            "Variacion de la tendencia incrustante "
-            "calculada a lo largo del registro:"
-        )
+        st.write( "Variacion de la tendencia incrustante calculada a lo largo del registro:")
 
-        st.line_chart(
-            df_plot[
-                "Curva LSI Predicha"
-            ],
-            height=350
-        )
+        st.line_chart( df_plot[ "Curva LSI Predicha" ], height=350 )
 
     # ================================================================
     # TAB 2
@@ -718,19 +524,9 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
     with tab2:
 
-        st.write(
-            "Comportamiento físico-químico base:"
-        )
+        st.write( "Comportamiento físico-químico base:")
 
-        st.line_chart(
-            df_plot[
-                [
-                    "pH",
-                    "Temperatura"
-                ]
-            ],
-            height=350
-        )
+        st.line_chart(df_plot[["pH","Temperatura"]],height=350)
 
     # ================================================================
     # TAB 3
@@ -738,16 +534,9 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
     with tab3:
 
-        st.write(
-            "Nivel de mineralización:"
-        )
+        st.write( "Nivel de mineralización:" )
 
-        st.line_chart(
-            df_plot[
-                "Conductividad"
-            ],
-            height=350
-        )
+        st.line_chart( df_plot[ "Conductividad" ], height=350 )
 
 # ====================================================================
 # 21. PIE DE PÁGINA
@@ -755,7 +544,4 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
 st.markdown("---")
 
-st.caption(
-    ":D Sistema de monitoreo y predicción LSI "
-    "telemetria y algoritmos de aprendizaje automatico. V.1.2"
-)
+st.caption( ":D Sistema de monitoreo y predicción LSI telemetria y algoritmos de aprendizaje automatico. V.1.2")
