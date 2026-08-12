@@ -48,9 +48,9 @@ def obtener_datos_limpios():
     return df
 
 st.sidebar.header("Origen de Datos")
-modo_conexion = st.sidebar.radio("Selecciona el modo:", ["Telemetría (Google Sheets)", "Simulación Manual"])
+modo_conexion = st.sidebar.radio("Selecciona el modo:", ["Telemetria (Google Sheets)", "Simulacion Manual"])
 
-if modo_conexion == "Telemetria po Google Sheets":
+if modo_conexion == "Telemetria (Google Sheets)":
     try:
         df_telemetria = obtener_datos_limpios()
         
@@ -131,7 +131,7 @@ col1.metric("LSI Matematico (IA 1)", f"{lsi_num:.2f}")
 col2.metric("Estado Estimado (IA 2)", clase_texto)
 col3.metric("Verificacion de seguridad", consenso)
 
-if consenso == ";D Aprobado":
+if consenso == ":D Aprobado":
     st.success(f"**VEREDICTO SEGURO:** El sistema de redundancia aprobó la prediccion, por lo que es probable que tenga razon. El agua presenta tendencia **{clase_texto.upper()}**.")
 else:
     st.warning(f"**ALERTA DEL SISTEMA:** Discrepancia matematica. Regresión estima '{clase_reg}' mientras que Clasificadora etiqueta '{clase_texto}'.")
