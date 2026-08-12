@@ -3,184 +3,875 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# Configuración de la página
-st.set_page_config(page_title="Dashboard LSI | IoT", layout="wide", page_icon=":D")
+# ====================================================================
+# CONFIGURACIÓN DE LA PÁGINA
+# ====================================================================
+
+st.set_page_config(
+    page_title="Dashboard LSI | IoT",
+    layout="wide",
+    page_icon=":D"
+)
 
 st.title(":D Sistema Predictivo de Incrustaciones (LSI)")
-st.write("Interfaz de diagnóstico y monitoreo histórico utilizando telemetría IoT y un Ensamble de Inteligencia Artificial.")
+
+st.write(
+    "Interfaz de diagnóstico y monitoreo histórico utilizando "
+    "telemetría IoT y un Ensamble de Inteligencia Artificial."
+)
 
 # ====================================================================
 # 1. CARGA DE MODELOS
 # ====================================================================
+
 @st.cache_resource
 def cargar_modelos():
-    reg = joblib.load('ia_regresora.pkl')
-    clas = joblib.load('ia_clasificadora.pkl')
-    enc = joblib.load('traductor_etiquetas.pkl')
+
+    reg = joblib.load("ia_regresora.pkl")
+    clas = joblib.load("ia_clasificadora.pkl")
+    enc = joblib.load("traductor_etiquetas.pkl")
+
     return reg, clas, enc
 
+
 try:
+
     ia_regresora, ia_clasificadora, traductor = cargar_modelos()
+
 except Exception as e:
-    st.error("Error: No se encontraron los modelos .pkl en el repositorio.")
+
+    st.error(
+        ":O Error: No se encontraron los modelos .pkl "
+        "en el repositorio."
+    )
+
+    st.exception(e)
     st.stop()
 
-# ====================================================================
-# 2. CONEXIÓN Y LIMPIEZA DE DATOS (IoT en Tiempo Real)
-# ====================================================================
-URL_GOOGLE_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQN1fUNX4RW58QQBpT7yUivdAxivFiYpPsf9m7XNLE9ubdjSwcq6wYSuB62xSg6YwLl0r8ChcSzDjo8/pub?output=csv"
 
-@st.cache_data(ttl=10) # Se refresca cada 10 segundos
+# ====================================================================
+# 2. CONEXIÓN Y LIMPIEZA DE DATOS
+# ====================================================================
+
+URL_GOOGLE_SHEETS = (
+    "https://docs.google.com/spreadsheets/d/e/"
+    "2PACX-1vQN1fUNX4RW58QQBpT7yUivdAxivFiYpPsf9m7XNLE9ubdjSwcq6wYSuB62xSg6YwLl0r8ChcSzDjo8/"
+    "pub?output=csv"
+)
+
+
+def convertir_numero(serie):
+
+    """
+    Convierte datos provenientes de Google Sheets a números.
+
+    Soporta:
+    - números normales
+    - números almacenados como texto
+    - coma decimal
+    - punto decimal
+    - espacios
+    """
+
+    return pd.to_numeric(
+        serie
+        .astype(str)
+        .str.strip()
+        .str.replace(",", ".", regex=False),
+        errors="coerce"
+    )
+
+
+@st.cache_data(ttl=10)
 def obtener_datos_limpios():
-    df = pd.read_csv(URL_GOOGLE_SHEETS)
-    
-    # LIMPIEZA DE FORMATO: Reemplazar comas por puntos en Temp(1), pH(2) y Cond(3)
-    for i in [1, 2, 3]:
-        df.iloc[:, i] = df.iloc[:, i].astype(str).str.replace(',', '.').astype(float)
-    
-    # Limpieza blindada de fechas (Columna 0)
-    df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=[df.columns[0]]) 
-    df = df.sort_values(by=df.columns[0])  
-    
+
+    # ---------------------------------------------------------------
+    # LEER GOOGLE SHEETS
+    # ---------------------------------------------------------------
+
+    df = pd.read_csv(
+        URL_GOOGLE_SHEETS,
+        header=0
+    )
+
+    # ---------------------------------------------------------------
+    # IMPORTANTE:
+    # SOLO USAREMOS A, B, C Y D
+    #
+    # A = tiempo
+    # B = Temperatura
+    # C = pH
+    # D = Conductividad
+    #
+    # TODO LO DEMÁS SE IGNORA
+    # ---------------------------------------------------------------
+
+    if len(df.columns) < 4:
+
+        raise ValueError(
+            "Google Sheets no contiene al menos 4 columnas."
+        )
+
+    # Tomamos exclusivamente las primeras 4 columnas
+    df = df.iloc[:, :4].copy()
+
+    # Renombramos independientemente de cómo se llamen
+    # originalmente en Google Sheets
+    df.columns = [
+        "tiempo",
+        "Temperatura",
+        "pH",
+        "Conductividad"
+    ]
+
+    # ---------------------------------------------------------------
+    # LIMPIEZA DE LAS COLUMNAS NUMÉRICAS
+    # ---------------------------------------------------------------
+
+    df["Temperatura"] = convertir_numero(
+        df["Temperatura"]
+    )
+
+    df["pH"] = convertir_numero(
+        df["pH"]
+    )
+
+    df["Conductividad"] = convertir_numero(
+        df["Conductividad"]
+    )
+
+    # ---------------------------------------------------------------
+    # LIMPIEZA DE FECHA
+    # ---------------------------------------------------------------
+
+    df["tiempo"] = pd.to_datetime(
+        df["tiempo"],
+        errors="coerce",
+        dayfirst=True
+    )
+
+    # ---------------------------------------------------------------
+    # ELIMINAR FILAS INVALIDAS
+    # ---------------------------------------------------------------
+
+    df = df.dropna(
+        subset=[
+            "tiempo",
+            "Temperatura",
+            "pH",
+            "Conductividad"
+        ]
+    )
+
+    # ---------------------------------------------------------------
+    # ORDEN CRONOLÓGICO
+    # ---------------------------------------------------------------
+
+    df = df.sort_values(
+        by="tiempo"
+    )
+
+    df = df.reset_index(
+        drop=True
+    )
+
     return df
 
+
+# ====================================================================
+# 3. SELECCIÓN DEL MODO DE CONEXIÓN
+# ====================================================================
+
 st.sidebar.header("Origen de Datos")
-modo_conexion = st.sidebar.radio("Selecciona el modo:", ["Telemetria (Google Sheets)", "Simulacion Manual"])
+
+modo_conexion = st.sidebar.radio(
+    "Selecciona el modo:",
+    [
+        "Telemetria (Google Sheets)",
+        "Simulacion Manual"
+    ]
+)
+
+
+# ====================================================================
+# 4. OBTENER DATOS
+# ====================================================================
 
 if modo_conexion == "Telemetria (Google Sheets)":
+
     try:
+
         df_telemetria = obtener_datos_limpios()
-        
-        # Extraemos la última fila (la más reciente)
+
+        # -----------------------------------------------------------
+        # ÚLTIMA LECTURA
+        # -----------------------------------------------------------
+
         ultima_lectura = df_telemetria.iloc[-1]
-        
-        fecha_lectura = str(ultima_lectura.iloc[0])
-        temp = float(ultima_lectura.iloc[1])
-        ph = float(ultima_lectura.iloc[2])
-        cond = float(ultima_lectura.iloc[3])
-        
-        st.sidebar.success(":D Conectado a la base de datos hecha y administrada por santiago")
-        st.sidebar.markdown(f"**Última lectura:** {fecha_lectura}")
-        st.sidebar.metric("pH", f"{ph}")
-        st.sidebar.metric("Conductividad", f"{cond} µS/cm")
-        st.sidebar.metric("Temperatura", f"{temp} °C")
-        
+
+        fecha_lectura = ultima_lectura["tiempo"]
+
+        temp = float(
+            ultima_lectura["Temperatura"]
+        )
+
+        ph = float(
+            ultima_lectura["pH"]
+        )
+
+        cond = float(
+            ultima_lectura["Conductividad"]
+        )
+
+        # -----------------------------------------------------------
+        # INFORMACIÓN EN SIDEBAR
+        # -----------------------------------------------------------
+
+        st.sidebar.success(
+            ":D Conectado a la base de datos "
+            "hecha y administrada por Santiago"
+        )
+
+        st.sidebar.markdown(
+            f"**Última lectura:** {fecha_lectura}"
+        )
+
+        st.sidebar.metric(
+            "pH",
+            f"{ph:.2f}"
+        )
+
+        st.sidebar.metric(
+            "Conductividad",
+            f"{cond:.2f} µS/cm"
+        )
+
+        st.sidebar.metric(
+            "Temperatura",
+            f"{temp:.2f} °C"
+        )
+
     except Exception as e:
-        st.sidebar.error(f":O Error al procesar los datos. El formato de origen no es compatible.")
+
+        st.sidebar.error(
+            ":O Error al procesar los datos."
+        )
+
+        st.error(
+            "El formato de las columnas A, B, C y D "
+            "no es compatible con el sistema."
+        )
+
+        st.exception(e)
+
         st.stop()
-else:
-    st.sidebar.subheader("Lecturas Manuales")
-    ph = st.sidebar.number_input("pH del Agua", min_value=0.0, max_value=14.0, value=7.2, step=0.1)
-    cond = st.sidebar.number_input("Conductividad (µS/cm)", min_value=0.0, max_value=5000.0, value=800.0, step=10.0)
-    temp = st.sidebar.number_input("Temperatura (°C)", min_value=0.0, max_value=100.0, value=25.0, step=0.1)
+
 
 # ====================================================================
-# 3. PROCESAMIENTO E INTELIGENCIA ARTIFICIAL
+# 5. SIMULACIÓN MANUAL
 # ====================================================================
+
+else:
+
+    st.sidebar.subheader(
+        "Lecturas Manuales"
+    )
+
+    ph = st.sidebar.number_input(
+        "pH del Agua",
+        min_value=0.0,
+        max_value=14.0,
+        value=7.2,
+        step=0.1
+    )
+
+    cond = st.sidebar.number_input(
+        "Conductividad (µS/cm)",
+        min_value=0.0,
+        max_value=5000.0,
+        value=800.0,
+        step=10.0
+    )
+
+    temp = st.sidebar.number_input(
+        "Temperatura (°C)",
+        min_value=0.0,
+        max_value=100.0,
+        value=25.0,
+        step=0.1
+    )
+
+
+# ====================================================================
+# 6. CONVERSIÓN FINAL A FLOAT
+# ====================================================================
+
+ph = float(ph)
+cond = float(cond)
+temp = float(temp)
+
+
+# ====================================================================
+# 7. PROCESAMIENTO E INTELIGENCIA ARTIFICIAL
+# ====================================================================
+
+# ---------------------------------------------------------------
+# VARIABLES BASE
+# ---------------------------------------------------------------
+
 tds = cond * 0.5
-log_cond = np.log10(cond + 1)
-log_temp_k = np.log10(temp + 273.15)
-ph_x_logcond = ph * log_cond
-ph_cuadrado = ph ** 2
-cond_cuadrado = cond ** 2
-rel_termo = ph / (temp + 273.15)
+
+log_cond = np.log10(
+    cond + 1
+)
+
+log_temp_k = np.log10(
+    temp + 273.15
+)
+
+ph_x_logcond = (
+    ph * log_cond
+)
+
+ph_cuadrado = (
+    ph ** 2
+)
+
+cond_cuadrado = (
+    cond ** 2
+)
+
+rel_termo = (
+    ph / (temp + 273.15)
+)
+
+
+# ====================================================================
+# 8. DATAFRAME DE ENTRADA PARA LOS MODELOS
+# ====================================================================
 
 datos_entrada = pd.DataFrame({
-    'pH': [float(ph)],
-    'Conductividad': [float(cond)],
-    'Temperatura': [float(temp)],
-    'TDS_Estimado': [float(tds)],
-    'Log_Cond': [float(log_cond)],
-    'Log_Temp_Kelvin': [float(log_temp_k)],
-    'pH_x_LogCond': [float(ph_x_logcond)],
-    'pH_Cuadrado': [float(ph_cuadrado)],
-    'Cond_Cuadrado': [float(cond_cuadrado)],
-    'Relacion_Termodinamica': [float(rel_termo)]
+
+    "pH": [
+        ph
+    ],
+
+    "Conductividad": [
+        cond
+    ],
+
+    "Temperatura": [
+        temp
+    ],
+
+    "TDS_Estimado": [
+        tds
+    ],
+
+    "Log_Cond": [
+        log_cond
+    ],
+
+    "Log_Temp_Kelvin": [
+        log_temp_k
+    ],
+
+    "pH_x_LogCond": [
+        ph_x_logcond
+    ],
+
+    "pH_Cuadrado": [
+        ph_cuadrado
+    ],
+
+    "Cond_Cuadrado": [
+        cond_cuadrado
+    ],
+
+    "Relacion_Termodinamica": [
+        rel_termo
+    ]
 })
 
-columnas_esperadas = ia_clasificadora.feature_names_in_
-datos_entrada = datos_entrada[columnas_esperadas]
 
-# Predicciones
-lsi_num = ia_regresora.predict(datos_entrada)[0]
-clase_num = ia_clasificadora.predict(datos_entrada)
-clase_texto = traductor.inverse_transform(clase_num)[0]
+# ====================================================================
+# 9. ORDEN EXACTO DE LAS VARIABLES DEL MODELO
+# ====================================================================
 
-# Lógica de Consenso
+try:
+
+    columnas_esperadas = (
+        ia_clasificadora.feature_names_in_
+    )
+
+except AttributeError:
+
+    columnas_esperadas = datos_entrada.columns
+
+
+# Verificar que todas las características existan
+
+faltantes = [
+    columna
+    for columna in columnas_esperadas
+    if columna not in datos_entrada.columns
+]
+
+if faltantes:
+
+    st.error(
+        ":O El modelo requiere columnas que "
+        "no fueron generadas: "
+        f"{faltantes}"
+    )
+
+    st.stop()
+
+
+datos_entrada = datos_entrada[
+    columnas_esperadas
+]
+
+
+# ====================================================================
+# 10. PREDICCIONES
+# ====================================================================
+
+try:
+
+    # ---------------------------------------------------------------
+    # MODELO REGRESOR
+    # ---------------------------------------------------------------
+
+    lsi_num = (
+        ia_regresora
+        .predict(datos_entrada)[0]
+    )
+
+    # ---------------------------------------------------------------
+    # MODELO CLASIFICADOR
+    # ---------------------------------------------------------------
+
+    clase_num = (
+        ia_clasificadora
+        .predict(datos_entrada)
+    )
+
+    clase_texto = (
+        traductor
+        .inverse_transform(clase_num)[0]
+    )
+
+except Exception as e:
+
+    st.error(
+        ":O Error al ejecutar los modelos de IA."
+    )
+
+    st.exception(e)
+
+    st.stop()
+
+
+# ====================================================================
+# 11. CLASIFICACIÓN DEL MODELO REGRESOR
+# ====================================================================
+
 if lsi_num < -0.5:
-    clase_reg = 'Corrosiva'
+
+    clase_reg = "Corrosiva"
+
 elif lsi_num > 0.5:
-    clase_reg = 'Incrustante'
+
+    clase_reg = "Incrustante"
+
 else:
-    clase_reg = 'Equilibrada'
 
-consenso = ":D Aprobado" if clase_texto == clase_reg else ":O Alerta, se requiere de revision manual"
+    clase_reg = "Equilibrada"
+
 
 # ====================================================================
-# 4. DASHBOARD DE RESULTADOS (TIEMPO REAL)
+# 12. LÓGICA DE CONSENSO
 # ====================================================================
-st.subheader(" Diagnóstico Quimico en Tiempo Real")
+
+if clase_texto == clase_reg:
+
+    consenso = ":D Aprobado"
+
+else:
+
+    consenso = (
+        ":O Alerta, se requiere de revision manual"
+    )
+
+
+# ====================================================================
+# 13. DASHBOARD DE RESULTADOS
+# ====================================================================
+
+st.subheader(
+    "Diagnóstico Quimico en Tiempo Real"
+)
+
+
 col1, col2, col3 = st.columns(3)
 
-col1.metric("LSI Matematico (IA 1)", f"{lsi_num:.2f}")
-col2.metric("Estado Estimado (IA 2)", clase_texto)
-col3.metric("Verificacion de seguridad", consenso)
+
+col1.metric(
+    "LSI Matematico (IA 1)",
+    f"{lsi_num:.2f}"
+)
+
+
+col2.metric(
+    "Estado Estimado (IA 2)",
+    clase_texto
+)
+
+
+col3.metric(
+    "Verificacion de seguridad",
+    consenso
+)
+
+
+# ====================================================================
+# 14. VEREDICTO
+# ====================================================================
 
 if consenso == ":D Aprobado":
-    st.success(f"**VEREDICTO SEGURO:** El sistema de redundancia aprobó la prediccion, por lo que es probable que tenga razon. El agua presenta tendencia **{clase_texto.upper()}**.")
+
+    st.success(
+        f"**VEREDICTO SEGURO:** "
+        f"El sistema de redundancia aprobó la prediccion, "
+        f"por lo que es probable que tenga razon. "
+        f"El agua presenta tendencia "
+        f"**{clase_texto.upper()}**."
+    )
+
 else:
-    st.warning(f"**ALERTA DEL SISTEMA:** Discrepancia matematica. Regresión estima '{clase_reg}' mientras que Clasificadora etiqueta '{clase_texto}'.")
+
+    st.warning(
+        f"**ALERTA DEL SISTEMA:** "
+        f"Discrepancia matematica. "
+        f"Regresión estima '{clase_reg}' "
+        f"mientras que Clasificadora etiqueta "
+        f"'{clase_texto}'."
+    )
+
+
+# ====================================================================
+# 15. INFORMACIÓN DE VARIABLES UTILIZADAS
+# ====================================================================
+
+with st.expander(
+    "Ver variables utilizadas por el sistema"
+):
+
+    st.write(
+        "Datos provenientes exclusivamente de "
+        "las columnas A, B, C y D:"
+    )
+
+    datos_mostrar = pd.DataFrame({
+
+        "Variable": [
+            "Temperatura",
+            "pH",
+            "Conductividad"
+        ],
+
+        "Valor": [
+            temp,
+            ph,
+            cond
+        ],
+
+        "Unidad": [
+            "°C",
+            "",
+            "µS/cm"
+        ]
+
+    })
+
+    st.dataframe(
+        datos_mostrar,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.write(
+        "Las siguientes variables son calculadas "
+        "internamente para alimentar los modelos:"
+    )
+
+    variables_ia = pd.DataFrame({
+
+        "Característica": [
+            "TDS_Estimado",
+            "Log_Cond",
+            "Log_Temp_Kelvin",
+            "pH_x_LogCond",
+            "pH_Cuadrado",
+            "Cond_Cuadrado",
+            "Relacion_Termodinamica"
+        ],
+
+        "Valor": [
+            tds,
+            log_cond,
+            log_temp_k,
+            ph_x_logcond,
+            ph_cuadrado,
+            cond_cuadrado,
+            rel_termo
+        ]
+
+    })
+
+    st.dataframe(
+        variables_ia,
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+# ====================================================================
+# 16. DASHBOARD HISTÓRICO
+# ====================================================================
+
+if modo_conexion == "Telemetria (Google Sheets)":
+
+    st.markdown("---")
+
+    st.subheader(
+        "Análisis historico - últimos 7 días de actividad"
+    )
+
+    # ---------------------------------------------------------------
+    # CREAR FECHA PURA
+    # ---------------------------------------------------------------
+
+    df_telemetria["Fecha_Pura"] = (
+        df_telemetria["tiempo"].dt.date
+    )
+
+    # ---------------------------------------------------------------
+    # OBTENER LOS DÍAS REGISTRADOS
+    # ---------------------------------------------------------------
+
+    dias_unicos_registrados = sorted(
+        df_telemetria["Fecha_Pura"]
+        .dropna()
+        .unique()
+    )
+
+    # ---------------------------------------------------------------
+    # ÚLTIMOS 7 DÍAS DISPONIBLES
+    # ---------------------------------------------------------------
+
+    ultimos_7_dias = (
+        dias_unicos_registrados[-7:]
+    )
+
+    # ---------------------------------------------------------------
+    # FILTRAR
+    # ---------------------------------------------------------------
+
+    df_plot = df_telemetria[
+        df_telemetria["Fecha_Pura"].isin(
+            ultimos_7_dias
+        )
+    ].copy()
+
+
+    # =================================================================
+    # 17. CREAR CARACTERÍSTICAS HISTÓRICAS
+    # =================================================================
+
+    df_plot_features = pd.DataFrame({
+
+        "pH":
+            df_plot["pH"].astype(float),
+
+        "Conductividad":
+            df_plot["Conductividad"].astype(float),
+
+        "Temperatura":
+            df_plot["Temperatura"].astype(float)
+
+    })
+
+
+    # ---------------------------------------------------------------
+    # VARIABLES ESTIMADAS
+    # ---------------------------------------------------------------
+
+    df_plot_features["TDS_Estimado"] = (
+        df_plot_features["Conductividad"]
+        * 0.5
+    )
+
+
+    df_plot_features["Log_Cond"] = np.log10(
+        df_plot_features["Conductividad"] + 1
+    )
+
+
+    df_plot_features["Log_Temp_Kelvin"] = np.log10(
+        df_plot_features["Temperatura"] + 273.15
+    )
+
+
+    df_plot_features["pH_x_LogCond"] = (
+        df_plot_features["pH"]
+        *
+        df_plot_features["Log_Cond"]
+    )
+
+
+    df_plot_features["pH_Cuadrado"] = (
+        df_plot_features["pH"] ** 2
+    )
+
+
+    df_plot_features["Cond_Cuadrado"] = (
+        df_plot_features["Conductividad"] ** 2
+    )
+
+
+    df_plot_features["Relacion_Termodinamica"] = (
+        df_plot_features["pH"]
+        /
+        (
+            df_plot_features["Temperatura"]
+            + 273.15
+        )
+    )
+
+
+    # ---------------------------------------------------------------
+    # ORDEN DE COLUMNAS DEL MODELO
+    # ---------------------------------------------------------------
+
+    df_plot_features = (
+        df_plot_features[
+            columnas_esperadas
+        ]
+    )
+
+
+    # =================================================================
+    # 18. PREDICCIÓN HISTÓRICA
+    # =================================================================
+
+    try:
+
+        df_plot["Curva LSI Predicha"] = (
+            ia_regresora.predict(
+                df_plot_features
+            )
+        )
+
+    except Exception as e:
+
+        st.error(
+            ":O Error al generar la predicción histórica."
+        )
+
+        st.exception(e)
+
+        st.stop()
+
+
+    # =================================================================
+    # 19. USAR TIEMPO COMO ÍNDICE
+    # =================================================================
+
+    df_plot = df_plot.set_index(
+        "tiempo"
+    )
+
+
+    # =================================================================
+    # 20. PESTAÑAS
+    # =================================================================
+
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "Curva de Corrosión/Sarro (LSI)",
+            "pH y Temperatura",
+            "Sólidos (Conductividad)"
+        ]
+    )
+
+
+    # ================================================================
+    # TAB 1
+    # ================================================================
+
+    with tab1:
+
+        st.write(
+            "Variación de la tendencia incrustante "
+            "calculada por IA a lo largo del registro:"
+        )
+
+        st.line_chart(
+            df_plot[
+                "Curva LSI Predicha"
+            ],
+            height=350
+        )
+
+
+    # ================================================================
+    # TAB 2
+    # ================================================================
+
+    with tab2:
+
+        st.write(
+            "Comportamiento físico-químico base:"
+        )
+
+        st.line_chart(
+            df_plot[
+                [
+                    "pH",
+                    "Temperatura"
+                ]
+            ],
+            height=350
+        )
+
+
+    # ================================================================
+    # TAB 3
+    # ================================================================
+
+    with tab3:
+
+        st.write(
+            "Nivel de mineralización:"
+        )
+
+        st.line_chart(
+            df_plot[
+                "Conductividad"
+            ],
+            height=350
+        )
+
+
+# ====================================================================
+# 21. PIE DE PÁGINA
+# ====================================================================
 
 st.markdown("---")
 
-# ====================================================================
-# 5. DASHBOARD HISTÓRICO (ÚLTIMOS 7 DÍAS REGISTRADOS)
-# ====================================================================
-if modo_conexion == "Telemetria (Google Sheets)":
-    st.subheader("Análisis historico ultimos, 7 días de actividad)")
-    
-    # Conversión segura de fecha para evitar fallos de atributos
-    df_telemetria['Fecha_Pura'] = pd.to_datetime(df_telemetria.iloc[:, 0]).dt.date
-    
-    # Obtener los días registrados existentes (máximo los últimos 7)
-    dias_unicos_registrados = sorted(df_telemetria['Fecha_Pura'].unique())
-    ultimos_7_dias = dias_unicos_registrados[-7:] 
-    
-    df_plot = df_telemetria[df_telemetria['Fecha_Pura'].isin(ultimos_7_dias)].copy()
-    df_plot.set_index(df_plot.columns[0], inplace=True) 
-    
-    # Generar características para el gráfico usando el modelo de IA
-    df_plot_features = pd.DataFrame({
-        'pH': df_plot.iloc[:, 2],
-        'Conductividad': df_plot.iloc[:, 3],
-        'Temperatura': df_plot.iloc[:, 1],
-    })
-    
-    df_plot_features['TDS_Estimado'] = df_plot_features['Conductividad'] * 0.5
-    df_plot_features['Log_Cond'] = np.log10(df_plot_features['Conductividad'] + 1)
-    df_plot_features['Log_Temp_Kelvin'] = np.log10(df_plot_features['Temperatura'] + 273.15)
-    df_plot_features['pH_x_LogCond'] = df_plot_features['pH'] * df_plot_features['Log_Cond']
-    df_plot_features['pH_Cuadrado'] = df_plot_features['pH'] ** 2
-    df_plot_features['Cond_Cuadrado'] = df_plot_features['Conductividad'] ** 2
-    df_plot_features['Relacion_Termodinamica'] = df_plot_features['pH'] / (df_plot_features['Temperatura'] + 273.15)
-    
-    df_plot_features = df_plot_features[columnas_esperadas]
-    
-    # Inyectar el cálculo de la IA Regresora para el histórico
-    df_plot['Curva LSI Predicha'] = ia_regresora.predict(df_plot_features)
-    
-    # Pestañas de gráficos
-    tab1, tab2, tab3 = st.tabs(["Curva de Corrosión/Sarro (LSI)", "pH y Temperatura", "Sólidos (Conductividad)"])
-    
-    with tab1:
-        st.write("Variación de la tendencia incrustante calculada por IA a lo largo del registro:")
-        st.line_chart(df_plot['Curva LSI Predicha'], color="#FF4B4B")
-    
-    with tab2:
-        st.write("Comportamiento físico-químico base:")
-        st.line_chart(df_plot.iloc[:, [1, 2]], height=350)
-        
-    with tab3:
-        st.write("Nivel de mineralización:")
-        st.line_chart(df_plot.iloc[:, 3], color="#0068C9")
+st.caption(
+    ":D Sistema de monitoreo y predicción LSI "
+    "mediante telemetría IoT e Inteligencia Artificial."
+)
