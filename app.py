@@ -17,7 +17,7 @@ st.title(":D Sistema Predictivo de Incrustaciones (LSI)")
 
 st.write(
     "Interfaz de diagnóstico y monitoreo histórico utilizando "
-    "telemetría IoT y un Ensamble de Inteligencia Artificial."
+    "telemetria y algoritmos de aprendizaje automatico. V.1.2"
 )
 
 # ====================================================================
@@ -701,8 +701,8 @@ if modo_conexion == "Telemetria (Google Sheets)":
     with tab1:
 
         st.write(
-            "Variación de la tendencia incrustante "
-            "calculada por IA a lo largo del registro:"
+            "Variacion de la tendencia incrustante "
+            "calculada a lo largo del registro:"
         )
 
         st.line_chart(
@@ -757,5 +757,5 @@ st.markdown("---")
 
 st.caption(
     ":D Sistema de monitoreo y predicción LSI "
-    "mediante telemetría IoT e Inteligencia Artificial."
+    "telemetria y algoritmos de aprendizaje automatico. V.1.2"
 )
