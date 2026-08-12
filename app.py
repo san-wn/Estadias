@@ -33,7 +33,6 @@ def cargar_modelos():
 
     return reg, clas, enc
 
-
 try:
 
     ia_regresora, ia_clasificadora, traductor = cargar_modelos()
@@ -48,7 +47,6 @@ except Exception as e:
     st.exception(e)
     st.stop()
 
-
 # ====================================================================
 # 2. CONEXIÓN Y LIMPIEZA DE DATOS
 # ====================================================================
@@ -58,7 +56,6 @@ URL_GOOGLE_SHEETS = (
     "2PACX-1vQN1fUNX4RW58QQBpT7yUivdAxivFiYpPsf9m7XNLE9ubdjSwcq6wYSuB62xSg6YwLl0r8ChcSzDjo8/"
     "pub?output=csv"
 )
-
 
 def convertir_numero(serie):
 
@@ -80,7 +77,6 @@ def convertir_numero(serie):
         .str.replace(",", ".", regex=False),
         errors="coerce"
     )
-
 
 @st.cache_data(ttl=10)
 def obtener_datos_limpios():
@@ -177,7 +173,6 @@ def obtener_datos_limpios():
 
     return df
 
-
 # ====================================================================
 # 3. SELECCIÓN DEL MODO DE CONEXIÓN
 # ====================================================================
@@ -191,7 +186,6 @@ modo_conexion = st.sidebar.radio(
         "Simulacion Manual"
     ]
 )
-
 
 # ====================================================================
 # 4. OBTENER DATOS
@@ -266,7 +260,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
         st.stop()
 
-
 # ====================================================================
 # 5. SIMULACIÓN MANUAL
 # ====================================================================
@@ -301,7 +294,6 @@ else:
         step=0.1
     )
 
-
 # ====================================================================
 # 6. CONVERSIÓN FINAL A FLOAT
 # ====================================================================
@@ -309,7 +301,6 @@ else:
 ph = float(ph)
 cond = float(cond)
 temp = float(temp)
-
 
 # ====================================================================
 # 7. PROCESAMIENTO E INTELIGENCIA ARTIFICIAL
@@ -344,7 +335,6 @@ cond_cuadrado = (
 rel_termo = (
     ph / (temp + 273.15)
 )
-
 
 # ====================================================================
 # 8. DATAFRAME DE ENTRADA PARA LOS MODELOS
@@ -393,7 +383,6 @@ datos_entrada = pd.DataFrame({
     ]
 })
 
-
 # ====================================================================
 # 9. ORDEN EXACTO DE LAS VARIABLES DEL MODELO
 # ====================================================================
@@ -407,7 +396,6 @@ try:
 except AttributeError:
 
     columnas_esperadas = datos_entrada.columns
-
 
 # Verificar que todas las características existan
 
@@ -427,11 +415,9 @@ if faltantes:
 
     st.stop()
 
-
 datos_entrada = datos_entrada[
     columnas_esperadas
 ]
-
 
 # ====================================================================
 # 10. PREDICCIONES
@@ -472,7 +458,6 @@ except Exception as e:
 
     st.stop()
 
-
 # ====================================================================
 # 11. CLASIFICACIÓN DEL MODELO REGRESOR
 # ====================================================================
@@ -489,7 +474,6 @@ else:
 
     clase_reg = "Equilibrada"
 
-
 # ====================================================================
 # 12. LÓGICA DE CONSENSO
 # ====================================================================
@@ -504,7 +488,6 @@ else:
         ":O Alerta, se requiere de revision manual"
     )
 
-
 # ====================================================================
 # 13. DASHBOARD DE RESULTADOS
 # ====================================================================
@@ -513,27 +496,22 @@ st.subheader(
     "Diagnóstico Quimico en Tiempo Real"
 )
 
-
 col1, col2, col3 = st.columns(3)
-
 
 col1.metric(
     "LSI Matematico (IA 1)",
     f"{lsi_num:.2f}"
 )
 
-
 col2.metric(
     "Estado Estimado (IA 2)",
     clase_texto
 )
 
-
 col3.metric(
     "Verificacion de seguridad",
     consenso
 )
-
 
 # ====================================================================
 # 14. VEREDICTO
@@ -558,84 +536,6 @@ else:
         f"mientras que Clasificadora etiqueta "
         f"'{clase_texto}'."
     )
-
-
-# ====================================================================
-# 15. INFORMACIÓN DE VARIABLES UTILIZADAS
-# ====================================================================
-
-with st.expander(
-    "Ver variables utilizadas por el sistema"
-):
-
-    st.write(
-        "Datos provenientes exclusivamente de "
-        "las columnas A, B, C y D:"
-    )
-
-    datos_mostrar = pd.DataFrame({
-
-        "Variable": [
-            "Temperatura",
-            "pH",
-            "Conductividad"
-        ],
-
-        "Valor": [
-            temp,
-            ph,
-            cond
-        ],
-
-        "Unidad": [
-            "°C",
-            "",
-            "µS/cm"
-        ]
-
-    })
-
-    st.dataframe(
-        datos_mostrar,
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.write(
-        "Las siguientes variables son calculadas "
-        "internamente para alimentar los modelos:"
-    )
-
-    variables_ia = pd.DataFrame({
-
-        "Característica": [
-            "TDS_Estimado",
-            "Log_Cond",
-            "Log_Temp_Kelvin",
-            "pH_x_LogCond",
-            "pH_Cuadrado",
-            "Cond_Cuadrado",
-            "Relacion_Termodinamica"
-        ],
-
-        "Valor": [
-            tds,
-            log_cond,
-            log_temp_k,
-            ph_x_logcond,
-            ph_cuadrado,
-            cond_cuadrado,
-            rel_termo
-        ]
-
-    })
-
-    st.dataframe(
-        variables_ia,
-        use_container_width=True,
-        hide_index=True
-    )
-
 
 # ====================================================================
 # 16. DASHBOARD HISTÓRICO
@@ -685,7 +585,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
         )
     ].copy()
 
-
     # =================================================================
     # 17. CREAR CARACTERÍSTICAS HISTÓRICAS
     # =================================================================
@@ -703,7 +602,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
     })
 
-
     # ---------------------------------------------------------------
     # VARIABLES ESTIMADAS
     # ---------------------------------------------------------------
@@ -713,16 +611,13 @@ if modo_conexion == "Telemetria (Google Sheets)":
         * 0.5
     )
 
-
     df_plot_features["Log_Cond"] = np.log10(
         df_plot_features["Conductividad"] + 1
     )
 
-
     df_plot_features["Log_Temp_Kelvin"] = np.log10(
         df_plot_features["Temperatura"] + 273.15
     )
-
 
     df_plot_features["pH_x_LogCond"] = (
         df_plot_features["pH"]
@@ -730,16 +625,13 @@ if modo_conexion == "Telemetria (Google Sheets)":
         df_plot_features["Log_Cond"]
     )
 
-
     df_plot_features["pH_Cuadrado"] = (
         df_plot_features["pH"] ** 2
     )
 
-
     df_plot_features["Cond_Cuadrado"] = (
         df_plot_features["Conductividad"] ** 2
     )
-
 
     df_plot_features["Relacion_Termodinamica"] = (
         df_plot_features["pH"]
@@ -750,7 +642,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
         )
     )
 
-
     # ---------------------------------------------------------------
     # ORDEN DE COLUMNAS DEL MODELO
     # ---------------------------------------------------------------
@@ -760,7 +651,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
             columnas_esperadas
         ]
     )
-
 
     # =================================================================
     # 18. PREDICCIÓN HISTÓRICA
@@ -784,7 +674,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
 
         st.stop()
 
-
     # =================================================================
     # 19. USAR TIEMPO COMO ÍNDICE
     # =================================================================
@@ -792,7 +681,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
     df_plot = df_plot.set_index(
         "tiempo"
     )
-
 
     # =================================================================
     # 20. PESTAÑAS
@@ -805,7 +693,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
             "Sólidos (Conductividad)"
         ]
     )
-
 
     # ================================================================
     # TAB 1
@@ -824,7 +711,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
             ],
             height=350
         )
-
 
     # ================================================================
     # TAB 2
@@ -846,7 +732,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
             height=350
         )
 
-
     # ================================================================
     # TAB 3
     # ================================================================
@@ -863,7 +748,6 @@ if modo_conexion == "Telemetria (Google Sheets)":
             ],
             height=350
         )
-
 
 # ====================================================================
 # 21. PIE DE PÁGINA
