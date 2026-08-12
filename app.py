@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# Configuración de la página (Más ancha para gráficos)
+# Configuración de la página
 st.set_page_config(page_title="Dashboard LSI | IoT", layout="wide", page_icon=":D")
 
 st.title(":D Sistema Predictivo de Incrustaciones (LSI)")
@@ -32,18 +32,16 @@ URL_GOOGLE_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQN1fUNX4RW
 
 @st.cache_data(ttl=10) # Se refresca cada 10 segundos
 def obtener_datos_limpios():
-    # Leemos el archivo crudo
     df = pd.read_csv(URL_GOOGLE_SHEETS)
     
-    # LIMPIEZA DE FORMATO: Reemplazar comas por puntos en Temp, pH y Cond
-    # Columnas esperadas: 0(Tiempo), 1(Temp), 2(pH), 3(Cond)
+    # LIMPIEZA DE FORMATO: Reemplazar comas por puntos en Temp(1), pH(2) y Cond(3)
     for i in [1, 2, 3]:
         df.iloc[:, i] = df.iloc[:, i].astype(str).str.replace(',', '.').astype(float)
     
-    # Arreglar la fecha para que Python la entienda cronológicamente
+    # Limpieza blindada de fechas (Columna 0)
     df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=[df.columns[0]]) # Elimina filas si la fecha falló
-    df = df.sort_values(by=df.columns[0])  # Ordena de más viejo a más nuevo
+    df = df.dropna(subset=[df.columns[0]]) 
+    df = df.sort_values(by=df.columns[0])  
     
     return df
 
@@ -80,7 +78,6 @@ else:
 # ====================================================================
 # 3. PROCESAMIENTO E INTELIGENCIA ARTIFICIAL
 # ====================================================================
-# Ingeniería de Características de la lectura actual
 tds = cond * 0.5
 log_cond = np.log10(cond + 1)
 log_temp_k = np.log10(temp + 273.15)
@@ -102,11 +99,10 @@ datos_entrada = pd.DataFrame({
     'Relacion_Termodinamica': [float(rel_termo)]
 })
 
-# Alinear columnas con la memoria de la IA
 columnas_esperadas = ia_clasificadora.feature_names_in_
 datos_entrada = datos_entrada[columnas_esperadas]
 
-# Lanzar predicciones
+# Predicciones
 lsi_num = ia_regresora.predict(datos_entrada)[0]
 clase_num = ia_clasificadora.predict(datos_entrada)
 clase_texto = traductor.inverse_transform(clase_num)[0]
@@ -144,18 +140,17 @@ st.markdown("---")
 if modo_conexion == "Telemetria (Google Sheets)":
     st.subheader("Análisis historico ultimos, 7 días de actividad)")
     
-    # Extraer la fecha ignorando la hora
-    df_telemetria['Fecha_Pura'] = df_telemetria.iloc[:, 0].dt.date
+    # Conversión segura de fecha para evitar fallos de atributos
+    df_telemetria['Fecha_Pura'] = pd.to_datetime(df_telemetria.iloc[:, 0]).dt.date
     
-    # Identificar los últimos 7 días únicos registrados
+    # Obtener los días registrados existentes (máximo los últimos 7)
     dias_unicos_registrados = sorted(df_telemetria['Fecha_Pura'].unique())
-    ultimos_7_dias = dias_unicos_registrados[-7:] # Corta la lista a máximo 7 elementos
+    ultimos_7_dias = dias_unicos_registrados[-7:] 
     
-    # Filtrar la tabla para mostrar solo esos días
     df_plot = df_telemetria[df_telemetria['Fecha_Pura'].isin(ultimos_7_dias)].copy()
-    df_plot.set_index(df_plot.columns[0], inplace=True) # Poner el tiempo como eje X
+    df_plot.set_index(df_plot.columns[0], inplace=True) 
     
-    # ---- CALCULAR EL LSI PARA TODO EL HISTORIAL ----
+    # Generar características para el gráfico usando el modelo de IA
     df_plot_features = pd.DataFrame({
         'pH': df_plot.iloc[:, 2],
         'Conductividad': df_plot.iloc[:, 3],
@@ -172,22 +167,20 @@ if modo_conexion == "Telemetria (Google Sheets)":
     
     df_plot_features = df_plot_features[columnas_esperadas]
     
-    # Inyectar la curva predicha por la IA a lo largo del tiempo
+    # Inyectar el cálculo de la IA Regresora para el histórico
     df_plot['Curva LSI Predicha'] = ia_regresora.predict(df_plot_features)
     
-    # Mostrar Gráficas en Pestañas
+    # Pestañas de gráficos
     tab1, tab2, tab3 = st.tabs(["Curva de Corrosión/Sarro (LSI)", "pH y Temperatura", "Sólidos (Conductividad)"])
     
     with tab1:
-        st.write("Variación de la tendencia incrustante a lo largo de la semana:")
+        st.write("Variación de la tendencia incrustante calculada por IA a lo largo del registro:")
         st.line_chart(df_plot['Curva LSI Predicha'], color="#FF4B4B")
     
     with tab2:
         st.write("Comportamiento físico-químico base:")
-        # Grafica la Temperatura (col 1) y el pH (col 2)
         st.line_chart(df_plot.iloc[:, [1, 2]], height=350)
         
     with tab3:
         st.write("Nivel de mineralización:")
-        # Grafica la Conductividad (col 3)
         st.line_chart(df_plot.iloc[:, 3], color="#0068C9")
